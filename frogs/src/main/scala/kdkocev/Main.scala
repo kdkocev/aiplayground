@@ -62,12 +62,78 @@ object Algo {
       }
   }
 
+  // todo and remove parents if possible
+  /**
+    * The core logic
+    * a.k.a DFS that makes branching lazy
+    * @param current state
+    * @param parents parents map
+    * @param endString the state we search for
+    * @return the path
+    */
+  def iterativeDFS(current: String, parents: Map[String, String], endString: String): List[String] = {
+
+    def iter(current: String, parents: Map[String, String]): List[String] = {
+      if (current == endString) trackPath(current, parents, Nil)
+      else {
+        // If the structure isn't lazy -> the time is trippled
+        rules.view.flatMap {
+          case (rule, replacement) if current.contains(rule) =>
+            val curr = current.replace(rule, replacement)
+            val res = iter(curr, parents ++ Map(curr -> current))
+
+            res.headOption.map(_ => res)
+          case _ => None
+        }.headOption.getOrElse(Nil)
+      }
+    }
+    iter(current, parents)
+  }
+
+  trait Node
+  case class State(value: String, parent: Node) extends Node
+  case object EndState extends Node
+
+  @tailrec
+  def trackPath(current: Node, res: List[String]): List[String] = current match {
+    case State(value, parent) => trackPath(parent, value :: res)
+    case EndState => res
+  }
+
+  def iterativeDFS(current: State, endString: String): List[String] = {
+
+    def iter(current: State): List[String] = {
+      if (current.value == endString) trackPath(current, Nil)
+      else {
+        // If the structure isn't lazy -> the time is trippled
+        rules.view.flatMap {
+          case (rule, replacement) if current.value.contains(rule) =>
+            val curr = current.value.replace(rule, replacement)
+            val res = iter(State(curr, current))
+
+            res.headOption.map(_ => res)
+          case _ => None
+        }.headOption.getOrElse(Nil)
+      }
+    }
+    iter(current)
+  }
+
   def solveFor(frogsCount: Int): List[String] = {
     val startString = makeStart(frogsCount)
     val endString = makeEnd(frogsCount)
 
-    // Add the start node in the queue and add it as its own parent
-    solveDFS(startString :: Nil, Map(startString -> startString), endString)
+    // All the possible ways this task can be solved. Left here for benchmarking.
+
+    // At the start add the start node in the queue and add it as its own parent
+
+    // solveBFS(startString :: Nil, Map(startString -> startString), endString)
+
+    // solveDFS(startString :: Nil, Map(startString -> startString), endString)
+
+    // iterativeDFS(startString, Map(startString -> startString), endString)
+
+    iterativeDFS(State(startString, EndState), endString)
   }
 }
 
@@ -77,7 +143,9 @@ object Main extends App {
 
   // Run the algorithm and measure execution time
   val startTime = System.currentTimeMillis()
+
   val result = Algo.solveFor(frogsCount)
+
   val endTime = System.currentTimeMillis()
 
   // Print the results
