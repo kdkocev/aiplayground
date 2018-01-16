@@ -6,35 +6,29 @@ import scala.util.Random
 
 object Main extends App {
 
-  val N = 30
+  val N = 200
+  val queensPositions = ArrayBuffer.fill(N)(0) // for speedup
 
-  // modify to return queen index as well as conflicts
-  def calculateConflicts(queenNum: Int, board: ArrayBuffer[ArrayBuffer[Char]], ypoint: Option[Int] = None): Int = {
-    val queenI: Int = queenNum
-  // TODO fix this implementation to be cleaner
-    val queenJ: Int =
-      if(ypoint.isEmpty)
-        (for((i, index) <- board(queenI).zipWithIndex if i == '*') yield index).head
-      else
-        ypoint.get
-
+  def calculateConflicts(queenI: Int, queenJ: Int, board: ArrayBuffer[ArrayBuffer[Char]]): Int = {
     val verticalConflicts: Int = board.count(x => x(queenJ) == '*') - 1
 
     val leftConflicts = {
-      val min = List(queenI, queenJ).min
+      val min = Math.min(queenI, queenJ)
       val startposI = queenI - min
       val startposJ = queenJ - min
+      val max = Math.max(startposI, startposJ)
 
-      (for (i <- 0 until N if startposI + i < N && startposJ + i < N)
+      (for (i <- 0 until (N - max))
         yield board(startposI + i)(startposJ + i) == '*').count(x => x) - 1
     }
 
     val rightConflicts: Int = {
-      val min = List(queenI, (N-1) - queenJ).min
+      val min = Math.min(queenI, (N-1) - queenJ)
       val startposI = queenI - min
       val startposJ = queenJ + min
+      val max = Math.max(N - startposI, startposJ)
 
-      (for (i <- 0 until N if startposI + i < N && startposJ - i >= 0)
+      (for (i <- 0 until (N - max))
           yield board(startposI + i)(startposJ - i) == '*').count(x => x) - 1
     }
 
@@ -42,16 +36,17 @@ object Main extends App {
   }
 
   def moveQueen(queenNum: Int, board: ArrayBuffer[ArrayBuffer[Char]]): ArrayBuffer[ArrayBuffer[Char]] = {
-    val v = (0 until N).map{
-      x => calculateConflicts(queenNum, board, Some(x))
+    // magic number
+    val (_, queenPos) = (0 until N).foldLeft(500,0) {
+      case ((min, index), qPos) =>
+        val r = calculateConflicts(queenNum, qPos, board)
+        if(r < min) (r, qPos)
+        else (min, index)
     }
 
-    val pos = v.zipWithIndex.minBy{case (x, _) => x}
-
-    board(queenNum) = board(queenNum).zipWithIndex.map {
-      case (x, index) if index == pos._2 => '*'
-      case _ => '_'
-    }
+    board(queenNum) = ArrayBuffer.fill(N)('_')
+    board(queenNum)(queenPos) = '*'
+    queensPositions(queenNum) = queenPos
 
     board
   }
@@ -59,14 +54,17 @@ object Main extends App {
   @tailrec
   def iter(board: ArrayBuffer[ArrayBuffer[Char]], tries: Int): Boolean = {
 
-    val conflicts = 0 until N map (x => calculateConflicts(x, board))
-
-    val maxConflictsQueen = conflicts.zipWithIndex.maxBy {case (x, _) => x}
+    val (conflictsCount, queenIndex): (Int, Int) = (0 until N).foldLeft(0,0) {
+      case ((max, index), queenNum) =>
+        val r = calculateConflicts(queenNum, queensPositions(queenNum), board)
+        if (r > max) (r, queenNum)
+        else (max, index)
+    }
 
     if(tries == 0) false
     else {
-      if (maxConflictsQueen._1 != 0) {
-        iter(moveQueen(maxConflictsQueen._2, board), tries - 1)
+      if (conflictsCount != 0) {
+        iter(moveQueen(queenIndex, board), tries - 1)
       } else {
         true
       }
@@ -80,9 +78,10 @@ object Main extends App {
     for (i <- 0 until N) {
       val n = Random.nextInt(N) // [0; N)
       board(i)(n) = '*'
+      queensPositions(i) = n
     }
 
-    if(!iter(board, 100)) {
+    if(!iter(board, 40)) {
       solve()
     } else
       board.foreach(println)
