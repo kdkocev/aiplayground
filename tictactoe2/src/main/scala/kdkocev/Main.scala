@@ -56,12 +56,12 @@ object Main extends App {
     matrix(x-1)(y-1) = USER
   }
 
-  def calculatePrice(board: ArrayBuffer[ArrayBuffer[Char]], isMax: Boolean, isFirst: Boolean): (Int, ArrayBuffer[ArrayBuffer[Char]]) = {
+  def calculatePrice(board: ArrayBuffer[ArrayBuffer[Char]], isMax: Boolean, isFirst: Boolean, depth: Int): (Int, ArrayBuffer[ArrayBuffer[Char]]) = {
     calculations += 1
 
     val g = getWinner(board)
-    if(g.isDefined && g.contains(USER)) (-1, board)
-    else if (g.isDefined && g.contains(COMPUTER)) (1, board)
+    if(g.isDefined && g.contains(USER)) (-100 - depth, board)
+    else if (g.isDefined && g.contains(COMPUTER)) (100 - depth, board)
     else if(boardIsFilled(board)) (0, board)
     else {
         val moves = for {
@@ -81,7 +81,7 @@ object Main extends App {
 
         b(el/3)(el%3) = symbol
 
-        calculatePrice(b, !isMax, false)
+        calculatePrice(b, !isMax, false, depth + 1)
       }
 
       val move = if(isMax) {
@@ -99,7 +99,7 @@ object Main extends App {
   }
 
   def makeComputerMove(): Unit = {
-    val move = calculatePrice(matrix, true, true)
+    val move = calculatePrice(matrix, true, true, 0)
     matrix = move._2
   }
 
